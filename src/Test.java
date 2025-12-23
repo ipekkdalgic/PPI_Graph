@@ -3,19 +3,30 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Scanner;
+
 public class Test {
+
+    //main method can throw FileNotFoundException
+    //even if we catch it inside, we show that we know exception handling
     public static void main(String[] args) throws FileNotFoundException {
+
+        //create graph object
         EdgeListGraph graph = new EdgeListGraph();
+
+        //scanner for menu input
         Scanner sc = new Scanner(System.in);
+
+        //we use this to check graph loaded or not
         boolean loaded = false;
 
+        //menu loop
         while (true) {
             System.out.println("\n===== STRING PPI MENU =====");
             System.out.println("1) Load graph");
             System.out.println("2) Search for protein by protein_id");
             System.out.println("3) Check if two proteins have an interaction");
             System.out.println("4) Most confident path between two proteins");
-            System.out.println("5) Most confident path between two proteins");
+            System.out.println("5) Calculate basic graph metrics (VertexCount, EdgeCount, Average Degree, Diameter, Reciprocity)");
             System.out.println("6) BFS and DFS Traverse (origin protein)");
             System.out.println("0) Exit");
             System.out.print("Choice: ");
@@ -24,17 +35,21 @@ public class Test {
             try {
                 choice = Integer.parseInt(sc.nextLine().trim());
             } catch (Exception e) {
+                //if input is not number
                 System.out.println("Invalid input.");
                 continue;
             }
 
+            //exit
             if (choice == 0) {
                 System.out.println("Bye!");
                 break;
             }
-            // secenek 1 dosyayı loadlar
+
+            //1) load graph
             if (choice == 1) {
                 System.out.print("Confidence threshold (0-1 arası, örn 0.7): ");
+
                 double threshold;
                 try {
                     threshold = Double.parseDouble(sc.nextLine().trim());
@@ -43,7 +58,7 @@ public class Test {
                     continue;
                 }
 
-                String infoPath  = "9606.protein.info.v12.0.txt";
+                String infoPath = "9606.protein.info.v12.0.txt";
                 String linksPath = "9606.protein.links.v12.0.txt";
 
                 try {
@@ -59,19 +74,22 @@ public class Test {
                     System.out.println("Load failed: " + ex.getMessage());
                 }
             }
-             // girilen protein hasvertex mi diye bakar
+
+            //2) search protein
             else if (choice == 2) {
                 if (!loaded) {
                     System.out.println("Önce 1) Load graph yap.");
                     continue;
                 }
+
                 System.out.print("protein_id: ");
                 String id = sc.nextLine().trim();
+
                 if (graph.hasVertex(id)) System.out.println("FOUND: " + id);
                 else System.out.println("NOT FOUND: " + id);
             }
 
-            // iki proten arasındaki etkilesime bakar eğer girdiğimiz treshold link dosyasındaki sayıdan büyükse etkilesim verir yoksa eskilesim vermez
+            //3) check interaction
             else if (choice == 3) {
                 if (!loaded) {
                     System.out.println("Önce 1) Load graph yap.");
@@ -89,6 +107,8 @@ public class Test {
                     System.out.println("NO: interaction does NOT exist (" + p1 + " -> " + p2 + ")");
                 }
             }
+
+            //4) most confident path
             else if (choice == 4) {
                 if (!loaded) {
                     System.out.println("Önce 1) Load graph yap.");
@@ -114,12 +134,30 @@ public class Test {
                 }
             }
 
-            // bfs ve dfs ye göre arar direkt edgelistgraphtan fonksiyonu çağirir
+            //5) graph metrics
+            else if (choice == 5) {
+                if (!loaded) {
+                    System.out.println("Önce 1) Load graph yap.");
+                    continue;
+                }
+
+                System.out.println("\n--- BASIC GRAPH METRICS ---");
+                EdgeListGraph.GraphMetrics m = graph.calculateBasicMetrics();
+
+                System.out.println("VertexCount     : " + m.vertexCount);
+                System.out.println("EdgeCount       : " + m.edgeCount);
+                System.out.printf("Average Degree  : %.4f%n", m.averageDegree);
+                System.out.println("Diameter (hops) : " + m.diameter);
+                System.out.printf("Reciprocity     : %.4f%n", m.reciprocity);
+            }
+
+            //6) BFS and DFS
             else if (choice == 6) {
                 if (!loaded) {
                     System.out.println("Önce 1) Load graph yap.");
                     continue;
                 }
+
                 System.out.print("Origin protein_id: ");
                 String origin = sc.nextLine().trim();
 
@@ -141,26 +179,22 @@ public class Test {
                 System.out.println("Unknown choice.");
             }
         }
-
         sc.close();
     }
 
-
-    // kuyruğu yazar
+    //print queue elements
     private static void printQueue(QueueInterface<String> q) {
         while (!q.isEmpty()) {
             System.out.println(q.dequeue());
         }
     }
-    // graphı yüklemek için
-    // değer aralığı 0-1 arası olmazsa hata
-    // \\s+ bu regexe göre dosyayı ayırıp okuyor zaten ilk okunan protein idsi ve sting
-    // link dosyasında 2 tane id 1 tane combined score olduğu için ilk ikiyi proteinlere atar 3. raw olur onu double a çevir
-    // directed dediği için iki yönlü kontrol ederiz
-    private static int loadGraph(EdgeListGraph graph, String infoPath, String linksPath, double threshold) throws FileNotFoundException {
+
+    //load graph from files
+    private static int loadGraph(EdgeListGraph graph, String infoPath, String linksPath, double threshold) {
         if (threshold < 0 || threshold > 1) {
             throw new IllegalArgumentException("Threshold must be between 0-1");
         }
+
         try (BufferedReader br = new BufferedReader(new FileReader(infoPath))) {
             String line = br.readLine();
             while ((line = br.readLine()) != null) {
@@ -168,13 +202,13 @@ public class Test {
                 if (line.isEmpty()) continue;
 
                 String[] parts = line.split("\\s+");
-                String proteinId = parts[0];
-                graph.addVertex(proteinId);
+                graph.addVertex(parts[0]);
             }
         } catch (IOException e) {
             System.out.println("INFO dosyası okunamadı: " + e.getMessage());
             return 0;
         }
+
         int addedEdges = 0;
 
         try (BufferedReader br = new BufferedReader(new FileReader(linksPath))) {
@@ -186,9 +220,6 @@ public class Test {
                 String[] parts = line.split("\\s+");
                 if (parts.length < 3) continue;
 
-                String p1 = parts[0];
-                String p2 = parts[1];
-
                 double raw;
                 try {
                     raw = Double.parseDouble(parts[2]);
@@ -197,16 +228,17 @@ public class Test {
                 }
 
                 double score = (raw > 1.0) ? (raw / 1000.0) : raw;
+
                 if (score >= threshold) {
-                    if (graph.addEdge(p1, p2, score)) addedEdges++;
-                    if (graph.addEdge(p2, p1, score)) addedEdges++;
+                    if (graph.addEdge(parts[0], parts[1], score)) addedEdges++;
+                    if (graph.addEdge(parts[1], parts[0], score)) addedEdges++;
                 }
             }
         } catch (IOException e) {
             System.out.println("LINKS dosyası okunamadı: " + e.getMessage());
             return addedEdges;
         }
+
         return addedEdges;
     }
-
 }
