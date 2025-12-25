@@ -46,11 +46,11 @@ public class Test {
 
             // 1) load graph
             if (choice == 1) {
-                System.out.print("Confidence threshold (between 0 and 1, e.g., 0.7): ");
+                System.out.print("Confidence threshold (between 0 and 1000, e.g., 700): ");
 
-                double threshold;
+                int threshold;
                 try {
-                    threshold = Double.parseDouble(sc.nextLine().trim());
+                    threshold = Integer.parseInt(sc.nextLine().trim());
                 } catch (Exception e) {
                     System.out.println("Threshold must be a number.");
                     continue;
@@ -118,18 +118,31 @@ public class Test {
                 System.out.print("Protein 2: ");
                 String p2 = sc.nextLine().trim();
 
-                StackInterface<String> path = new LinkedStack<>();
-                double conf = graph.cheapestPath(p1, p2, path);
+                StackInterface<String> sp = new LinkedStack<>();
+                int hop = graph.shortestPath(p1, p2, sp);
 
-                if (conf == 0.0) {
+                if (hop == -1) {
                     System.out.println("No path found.");
-                } else {
-                    System.out.println("Most confident path confidence: " + conf);
-                    System.out.println("Path:");
-                    while (!path.isEmpty()) {
-                        System.out.println(path.pop());
-                    }
+                    continue;
                 }
+
+                System.out.println(" Shortest path (The first found shortest path)");
+                System.out.println("Cost = " + (double) hop + " (edge count)");
+                printPathStack(sp);
+
+                StackInterface<String> cp = new LinkedStack<>();
+                double cheapestCost = graph.cheapestPath(p1, p2, cp);
+
+                System.out.println(" Cheapest path (The path has the minimum total edge weight)");
+                System.out.println("Cost = " + cheapestCost);
+                printPathStack(cp);
+
+                StackInterface<String> mp = new LinkedStack<>();
+                double mostConfCost = graph.mostConfidentPath(p1, p2, mp);
+
+                System.out.println(" Most Confident path (The shortest path with the maximum of total edge weight)");
+                System.out.println("Cost = " + mostConfCost);
+                printPathStack(mp);
             }
 
             // 5) graph metrics
@@ -164,11 +177,11 @@ public class Test {
                     continue;
                 }
 
-                System.out.println("\nBFS order:");
+                System.out.println(" BFS order:");
                 QueueInterface<String> bfs = graph.getBreadthFirstTravel(origin);
                 printQueue(bfs);
 
-                System.out.println("\nDFS order:");
+                System.out.println(" DFS order:");
                 QueueInterface<String> dfs = graph.getDepthFirstTravel(origin);
                 printQueue(dfs);
             }
@@ -179,6 +192,18 @@ public class Test {
         }
         sc.close();
     }
+    // print stack elements
+    private static void printPathStack(StackInterface<String> s) {
+        StackInterface<String> tmp = new LinkedStack<>();
+        while (!s.isEmpty()) tmp.push(s.pop());
+
+        int i = 1;
+        while (!tmp.isEmpty()) {
+            String v = tmp.pop();
+            System.out.println(i + "- " + v);
+            i++;
+        }
+    }
 
     // print queue elements
     private static void printQueue(QueueInterface<String> q) {
@@ -188,31 +213,15 @@ public class Test {
     }
 
     // load graph from files
-    private static int loadGraph(EdgeListGraph graph, String infoPath, String linksPath, double threshold) {
-        if (threshold < 0 || threshold > 1) {
-            throw new IllegalArgumentException("Threshold must be between 0 and 1.");
-        }
-
-        // Load vertices
-        try (BufferedReader br = new BufferedReader(new FileReader(infoPath))) {
-            String line = br.readLine(); // skip header
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
-
-                String[] parts = line.split("\\s+");
-                graph.addVertex(parts[0]);
-            }
-        } catch (IOException e) {
-            System.out.println("INFO file could not be read: " + e.getMessage());
-            return 0;
+    private static int loadGraph(EdgeListGraph graph, String infoPath, String linksPath, int threshold ) {
+        if (threshold < 0 || threshold > 1000) {
+            throw new IllegalArgumentException("Threshold must be between 0 and 1000.");
         }
 
         int addedEdges = 0;
-
-        // Load edges
         try (BufferedReader br = new BufferedReader(new FileReader(linksPath))) {
             String line = br.readLine(); // skip header
+
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
@@ -220,25 +229,31 @@ public class Test {
                 String[] parts = line.split("\\s+");
                 if (parts.length < 3) continue;
 
-                double raw;
+                int score;
                 try {
-                    raw = Double.parseDouble(parts[2]);
+                    score = Integer.parseInt(parts[2]);
                 } catch (NumberFormatException ex) {
                     continue;
                 }
 
-                double score = (raw > 1.0) ? (raw / 1000.0) : raw;
-
                 if (score >= threshold) {
-                    if (graph.addEdge(parts[0], parts[1], score)) addedEdges++;
-                    if (graph.addEdge(parts[1], parts[0], score)) addedEdges++;
+                    String u = parts[0];
+                    String v = parts[1];
+
+                    graph.addVertex(u);
+                    graph.addVertex(v);
+
+                    if (graph.addEdge(u, v, score )) addedEdges++;
+                    if (graph.addEdge(v, u, score)) addedEdges++;
+
                 }
             }
         } catch (IOException e) {
             System.out.println("LINKS file could not be read: " + e.getMessage());
-            return addedEdges;
+            return 0;
         }
 
         return addedEdges;
     }
+
 }
