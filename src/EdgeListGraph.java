@@ -308,7 +308,7 @@ public class EdgeListGraph implements GraphInterface<String> {
         return neigh;
     }
 
-    //BASIC GRAPH METRICS (VertexCount, EdgeCount, AvgDegree, Diameter, Reciprocity)
+    //baisc graph metrics (VertexCount, EdgeCount, AvgDegree, Diameter, Reciprocity)
     public GraphMetrics calculateBasicMetrics() {
         int V = getNumberOfVertices();
         int E = getNumberOfEdges();
@@ -325,11 +325,11 @@ public class EdgeListGraph implements GraphInterface<String> {
         return new GraphMetrics(V, E, avgDegree, diameter, reciprocity);
     }
 
-    //count reciprocated edges (u->v and v->u)
+    //count reciprocated edges - u->v and v->u
     private int countReciprocalEdges() {
         HashSet<String> edgeSet = new HashSet<>(edges.size() * 2);
 
-        //store every edge as "u->v"
+        //store every edge as u->v
         for (int i = 0; i < edges.size(); i++) {
             Edge<String> e = edges.get(i);
             edgeSet.add(key(e.getBegin(), e.getEnd()));
