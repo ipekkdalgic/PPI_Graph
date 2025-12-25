@@ -6,20 +6,18 @@ import java.util.Scanner;
 
 public class Test {
 
-    //main method can throw FileNotFoundException
-    //even if we catch it inside, we show that we know exception handling
     public static void main(String[] args) throws FileNotFoundException {
 
-        //create graph object
+        // create graph object
         EdgeListGraph graph = new EdgeListGraph();
 
-        //scanner for menu input
+        // scanner for menu input
         Scanner sc = new Scanner(System.in);
 
-        //we use this to check graph loaded or not
+        // we use this to check graph loaded or not
         boolean loaded = false;
 
-        //menu loop
+        // menu loop
         while (true) {
             System.out.println("\n===== STRING PPI MENU =====");
             System.out.println("1) Load graph");
@@ -35,26 +33,26 @@ public class Test {
             try {
                 choice = Integer.parseInt(sc.nextLine().trim());
             } catch (Exception e) {
-                //if input is not number
+                // if input is not a number
                 System.out.println("Invalid input.");
                 continue;
             }
 
-            //exit
+            // exit
             if (choice == 0) {
                 System.out.println("Bye!");
                 break;
             }
 
-            //1) load graph
+            // 1) load graph
             if (choice == 1) {
-                System.out.print("Confidence threshold (0-1 arası, örn 0.7): ");
+                System.out.print("Confidence threshold (between 0 and 1, e.g., 0.7): ");
 
                 double threshold;
                 try {
                     threshold = Double.parseDouble(sc.nextLine().trim());
                 } catch (Exception e) {
-                    System.out.println("Threshold sayı olmalı.");
+                    System.out.println("Threshold must be a number.");
                     continue;
                 }
 
@@ -75,10 +73,10 @@ public class Test {
                 }
             }
 
-            //2) search protein
+            // 2) search protein
             else if (choice == 2) {
                 if (!loaded) {
-                    System.out.println("Önce 1) Load graph yap.");
+                    System.out.println("Please run 1) Load graph first.");
                     continue;
                 }
 
@@ -89,10 +87,10 @@ public class Test {
                 else System.out.println("NOT FOUND: " + id);
             }
 
-            //3) check interaction
+            // 3) check interaction
             else if (choice == 3) {
                 if (!loaded) {
-                    System.out.println("Önce 1) Load graph yap.");
+                    System.out.println("Please run 1) Load graph first.");
                     continue;
                 }
 
@@ -108,10 +106,10 @@ public class Test {
                 }
             }
 
-            //4) most confident path
+            // 4) most confident path
             else if (choice == 4) {
                 if (!loaded) {
-                    System.out.println("Önce 1) Load graph yap.");
+                    System.out.println("Please run 1) Load graph first.");
                     continue;
                 }
 
@@ -134,10 +132,10 @@ public class Test {
                 }
             }
 
-            //5) graph metrics
+            // 5) graph metrics
             else if (choice == 5) {
                 if (!loaded) {
-                    System.out.println("Önce 1) Load graph yap.");
+                    System.out.println("Please run 1) Load graph first.");
                     continue;
                 }
 
@@ -151,10 +149,10 @@ public class Test {
                 System.out.printf("Reciprocity     : %.4f%n", m.reciprocity);
             }
 
-            //6) BFS and DFS
+            // 6) BFS and DFS
             else if (choice == 6) {
                 if (!loaded) {
-                    System.out.println("Önce 1) Load graph yap.");
+                    System.out.println("Please run 1) Load graph first.");
                     continue;
                 }
 
@@ -182,21 +180,22 @@ public class Test {
         sc.close();
     }
 
-    //print queue elements
+    // print queue elements
     private static void printQueue(QueueInterface<String> q) {
         while (!q.isEmpty()) {
             System.out.println(q.dequeue());
         }
     }
 
-    //load graph from files
+    // load graph from files
     private static int loadGraph(EdgeListGraph graph, String infoPath, String linksPath, double threshold) {
         if (threshold < 0 || threshold > 1) {
-            throw new IllegalArgumentException("Threshold must be between 0-1");
+            throw new IllegalArgumentException("Threshold must be between 0 and 1.");
         }
 
+        // Load vertices
         try (BufferedReader br = new BufferedReader(new FileReader(infoPath))) {
-            String line = br.readLine();
+            String line = br.readLine(); // skip header
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
@@ -205,14 +204,15 @@ public class Test {
                 graph.addVertex(parts[0]);
             }
         } catch (IOException e) {
-            System.out.println("INFO dosyası okunamadı: " + e.getMessage());
+            System.out.println("INFO file could not be read: " + e.getMessage());
             return 0;
         }
 
         int addedEdges = 0;
 
+        // Load edges
         try (BufferedReader br = new BufferedReader(new FileReader(linksPath))) {
-            String line = br.readLine();
+            String line = br.readLine(); // skip header
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
@@ -235,7 +235,7 @@ public class Test {
                 }
             }
         } catch (IOException e) {
-            System.out.println("LINKS dosyası okunamadı: " + e.getMessage());
+            System.out.println("LINKS file could not be read: " + e.getMessage());
             return addedEdges;
         }
 
