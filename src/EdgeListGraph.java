@@ -183,14 +183,70 @@ public class EdgeListGraph implements GraphInterface<String> {
 
         return result;
     }
+    //finds the shortest path from begin to end based on the minimum number of edges
+    //uses BFS and stores predecessors to reconstruct the first found shortest path
+    public int shortestPath(String begin, String end, StackInterface<String> path) {
+        path.clear();
+        if (begin == null || end == null) return -1;
+        if (!hasVertex(begin) || !hasVertex(end)) return -1;
+
+        int n = vertices.size();
+        int start = vertices.indexOf(begin);
+        int target = vertices.indexOf(end);
+
+        int[] dist = new int[n];
+        int[] pred = new int[n];
+        boolean[] visited = new boolean[n];
+
+        for (int i = 0; i < n; i++) {
+            dist[i] = -1;
+            pred[i] = -1;
+            visited[i] = false;
+        }
+
+        QueueInterface<Integer> q = new LinkedQueue<>();
+        visited[start] = true;
+        dist[start] = 0;
+        q.enqueue(start);
+
+        while (!q.isEmpty()) {
+            int u = q.dequeue();
+            if (u == target) break;
+
+            String uLabel = vertices.get(u);
+            ArrayList<Edge<String>> out = getOutgoingEdges(uLabel);
+
+            for (int k = 0; k < out.size(); k++) {
+                int v = vertices.indexOf(out.get(k).getEnd());
+                if (v == -1) continue;
+
+                if (!visited[v]) {
+                    visited[v] = true;
+                    dist[v] = dist[u] + 1;
+                    pred[v] = u;
+                    q.enqueue(v);
+                }
+            }
+        }
+
+        if (dist[target] == -1) return -1;
+        StackInterface<String> rev = new LinkedStack<>();
+        int current = target;
+        while (current != -1) {
+            rev.push(vertices.get(current));
+            if (current == start) break;
+            current = pred[current];
+        }
+        while (!rev.isEmpty()) path.push(rev.pop());
+
+        return dist[target];
+    }
 
     //most confident path (we use Dijkstra with -log(score))
+    //edge weights represent confidence scores, and the total path cost is the sum of edge weights
     @Override
     public double cheapestPath(String begin, String end, StackInterface<String> path) {
-        //clear given path first
         path.clear();
-
-        //basic checks
         if (begin == null || end == null) return 0.0;
         if (!hasVertex(begin) || !hasVertex(end)) return 0.0;
 
@@ -198,93 +254,151 @@ public class EdgeListGraph implements GraphInterface<String> {
         int start = vertices.indexOf(begin);
         int target = vertices.indexOf(end);
 
-        //distance array (cost)
         double[] distance = new double[n];
-
-        //predecessor array (for path)
         int[] pred = new int[n];
-
-        //visited array for dijkstra
         boolean[] visited = new boolean[n];
 
-        //initialize arrays
         for (int i = 0; i < n; i++) {
             distance[i] = Double.POSITIVE_INFINITY;
             pred[i] = -1;
             visited[i] = false;
         }
-
-        //start cost is 0
         distance[start] = 0.0;
 
-        //dijkstra main loop
-        for (int iterator = 0; iterator < n; iterator++) {
+        for (int it = 0; it < n; it++) {
             int u = -1;
             double best = Double.POSITIVE_INFINITY;
 
-            //find smallest distance unvisited vertex
             for (int i = 0; i < n; i++) {
                 if (!visited[i] && distance[i] < best) {
                     best = distance[i];
                     u = i;
                 }
             }
-
-            //if cannot find new vertex, stop
             if (u == -1) break;
-
-            //if reached target, stop early
             if (u == target) break;
 
             visited[u] = true;
 
-            //get outgoing edges from u
             String uLabel = vertices.get(u);
-            ArrayList<Edge<String>> outEdges = getOutgoingEdges(uLabel);
+            ArrayList<Edge<String>> out = getOutgoingEdges(uLabel);
 
-            //relax neighbors
-            for (int k = 0; k < outEdges.size(); k++) {
-                Edge<String> e = outEdges.get(k);
-
+            for (int k = 0; k < out.size(); k++) {
+                Edge<String> e = out.get(k);
                 int v = vertices.indexOf(e.getEnd());
                 if (v == -1) continue;
 
-                double score = e.getWeight();
-                if (score <= 0) continue;
+                double w = e.getWeight();
+                double cand = distance[u] + w;
 
-                //convert score to cost
-                double edgeCost = -Math.log(Math.max(score, 1e-12));
-                double newDist = distance[u] + edgeCost;
-
-                //update if better
-                if (newDist < distance[v]) {
-                    distance[v] = newDist;
+                if (cand < distance[v]) {
+                    distance[v] = cand;
                     pred[v] = u;
                 }
             }
         }
 
-        //if no path found
         if (Double.isInfinite(distance[target])) return 0.0;
 
-        //reconstruct path (target to start) with predecessor array
-        StackInterface<String> reverse = new LinkedStack<>();
+        StackInterface<String> rev = new LinkedStack<>();
         int cur = target;
-
         while (cur != -1) {
-            reverse.push(vertices.get(cur));
+            rev.push(vertices.get(cur));
             if (cur == start) break;
             cur = pred[cur];
         }
+        while (!rev.isEmpty()) path.push(rev.pop());
 
-        //push correct order into given path stack
-        while (!reverse.isEmpty()) {
-            path.push(reverse.pop());
+        return distance[target];
+    }
+    // computes the Most Confident Path between two vertices
+    // it first finds the shortest path distances using BFS
+    // then among all shortest paths, selects the one with the maximum total edge weight
+    // sum of confidence scores using dynamic programming over BFS layers
+    public double mostConfidentPath(String begin, String end, StackInterface<String> path) {
+        path.clear();
+        if (begin == null || end == null) return 0.0;
+        if (!hasVertex(begin) || !hasVertex(end)) return 0.0;
+
+        int n = vertices.size();
+        int start = vertices.indexOf(begin);
+        int target = vertices.indexOf(end);
+
+        int[] distance = new int[n];
+        for (int i = 0; i < n; i++) distance[i] = -1;
+
+        QueueInterface<Integer> q = new LinkedQueue<>();
+        distance[start] = 0;
+        q.enqueue(start);
+
+        while (!q.isEmpty()) {
+            int u = q.dequeue();
+
+            String uLabel = vertices.get(u);
+            ArrayList<Edge<String>> out = getOutgoingEdges(uLabel);
+
+            for (int k = 0; k < out.size(); k++) {
+                int v = vertices.indexOf(out.get(k).getEnd());
+                if (v == -1) continue;
+
+                if (distance[v] == -1) {
+                    distance[v] = distance[u] + 1;
+                    q.enqueue(v);
+                }
+            }
         }
 
-        //convert total cost back to confidence
-        return Math.exp(-distance[target]);
+        if (distance[target] == -1) return 0.0;
+        double[] best = new double[n];
+        int[] pre = new int[n];
+        for (int i = 0; i < n; i++) {
+            best[i] = Double.NEGATIVE_INFINITY;
+            pre[i] = -1;
+        }
+        best[start] = 0.0;
+
+        int maxD = distance[target];
+        for (int d = 0; d < maxD; d++) {
+            for (int u = 0; u < n; u++) {
+                if (distance[u] != d) continue;
+                if (best[u] == Double.NEGATIVE_INFINITY) continue;
+
+                String uLabel = vertices.get(u);
+                ArrayList<Edge<String>> out = getOutgoingEdges(uLabel);
+
+                for (int k = 0; k < out.size(); k++) {
+                    Edge<String> e = out.get(k);
+                    int v = vertices.indexOf(e.getEnd());
+                    if (v == -1) continue;
+
+                    if (distance[v] == distance[u] + 1) {
+                        double w = e.getWeight();
+                        double cand = best[u] + w;
+
+                        if (cand > best[v]) {
+                            best[v] = cand;
+                            pre[v] = u;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (best[target] == Double.NEGATIVE_INFINITY) return 0.0;
+
+        StackInterface<String> rev = new LinkedStack<>();
+        int current = target;
+        while (current != -1) {
+            rev.push(vertices.get(current));
+            if (current == start) break;
+            current = pre[current];
+        }
+
+        if (rev.isEmpty() || !rev.peek().equals(begin)) return 0.0;
+        while (!rev.isEmpty()) path.push(rev.pop());
+        return best[target];
     }
+
 
     //get all outgoing edges of a vertex
     private ArrayList<Edge<String>> getOutgoingEdges(String vertex) {
